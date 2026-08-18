@@ -2,7 +2,6 @@ import os
 import requests
 import pandas as pd
 
-# 港式官方譯名對照
 TEAM_MAP = {
     "Atlético Madrid": "馬德里體育會", "Málaga": "馬拉加", "Real Madrid": "皇家馬德里",
     "Barcelona": "巴塞隆拿", "Rayo Vallecano": "華歷簡奴", "Alavés": "艾拉維斯",
@@ -16,7 +15,7 @@ def make_progress_bar(pct):
     filled = max(1, min(10, int(round(pct / 10))))
     return "█" * filled + "░" * (10 - filled)
 
-def fetch_hkjc_paywall_model():
+def fetch_real_hkjc_data():
     api_key = os.environ.get("ODDS_API_KEY")
     if not api_key:
         return None
@@ -39,9 +38,11 @@ def fetch_hkjc_paywall_model():
     if not all_events:
         return None
 
+    # 按真實開賽時間排序
     all_events = sorted(all_events, key=lambda x: x.get("commence_time", ""))
-    top_event = all_events[0]
     
+    # 抓取第一場作為真實焦點重心
+    top_event = all_events[0]
     home_eng = top_event.get("home_team", "")
     away_eng = top_event.get("away_team", "")
     home = TEAM_MAP.get(home_eng, home_eng)
@@ -60,6 +61,7 @@ def fetch_hkjc_paywall_model():
             a_line = f"+{s.get('point')}" if s.get('point', 0) > 0 else str(s.get('point'))
             a_odds = float(s.get('price', 1.90))
 
+    # 動態真實勝率計算
     raw_h = (1 / h_odds) * 100
     raw_a = (1 / a_odds) * 100
     total = raw_h + raw_a
@@ -73,13 +75,13 @@ def fetch_hkjc_paywall_model():
         recommend_side = f"客隊 【{away}】 ({a_line})"
         value_tag = "💎 【高博彩期望值 +EV 黃金受讓盤】"
 
-    # 計算剩餘鎖定賽事數量
-    locked_count = max(0, len(all_events) - 1)
+    # 動態計算 API 當前抓取到的真實剩餘賽事數量
+    real_locked_count = max(0, len(all_events) - 1)
 
-    # 頂級專業分析卡片 + 付費牆設計
-    paywall_card = f"""
+    # 100% 真實數據與動態計數的卡片
+    real_message = f"""
 🎯 **【馬會重心專員 • 大數據 +EV 深度量化拆局】**
-> **🔥 系統近期戰績：近 10 場實戰命中 7 場 (70% 穩定紅單率)**
+> **🔥 數據來源：API 實時抓取當前真實開盤數據**
 
 📅 **開賽時間：{hkt_str}**
 🏟️ **焦點對決：{home} vs {away}**
@@ -90,27 +92,22 @@ def fetch_hkjc_paywall_model():
 • **客隊贏盤隱含勝率**：{make_progress_bar(a_prob)} **{a_prob}%** (受讓盤 {a_line} @ **{a_odds}**)
 
 {value_tag}
-💡 **莊家陷阱避坑**：大眾資金過度集中於熱門方，模型偵測到機構刻意營造假象，下風球/冷盤保護網已全面啟動！
+💡 **莊家陷阱避坑**：依據實時真實賠率模型運算，過濾市場盲點。
 
 🎯 **【獨家專家下注建議】**：鎖定 **{recommend_side}**
-💰 **【建議注碼分配】**：平注 **3.5%**（強烈建議跟足紀律，長線穩定獲利）
+💰 **【建議注碼分配】**：平注 **3.5%**
 ━━━━━━━━━━━━━━━━━━━
 
 🔒 **【今日 VIP 獨家鎖定區】**
-• 系統今日額外偵測到 **{locked_count} 場** 高期望值 (+EV) 馬會焦點賽事（包含英超、西甲精準讓球盤口與資金流向）。
-• 為了保障付費會員權益，其餘賽事之數據模型與下注建議**已全數轉入 VIP 專區**。
-• **欲解鎖今日全部賽事拆局與獨家注碼配置，請即刻私訊管理員升級 VIP 會員！**
-
-📱 **【Threads 爆款引流文案（長按複製）】**
-🔥 今日馬會對照大數據出爐！今日焦點大戰 {home} vs {away} 免費公開，系統盲測鎖定 +EV 黃金特價盤！其餘隱藏重心場次已鎖入 VIP 房，想跟住職業推介穩穩地贏？即刻點擊 Bio 連結加入 Discord 頻道！
+• 系統實時偵測到當前 API 共有 **{real_locked_count} 場** 真實開賽賽事可供追蹤。
+• 其餘真實賽事的數據模型與讓球盤口已全數收錄於 VIP 專區。
+• **欲解鎖今日全部真實賽事拆局與獨家注碼配置，請即刻私訊管理員升級 VIP 會員！**
 """
-
-    return paywall_card
+    return real_message
 
 # 執行並發送到 Discord
-final_message = fetch_hkjc_paywall_model()
+final_message = fetch_real_hkjc_data()
 webhook_url = os.environ.get("DISCORD_WEBHOOK")
 
 if webhook_url and final_message:
     requests.post(webhook_url, data={"content": final_message})
-
