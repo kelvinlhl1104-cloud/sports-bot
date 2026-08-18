@@ -2,18 +2,18 @@ name: Daily Sports Scraper
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # 每天香港時間早上 08:00 自動執行
-  workflow_dispatch:      # 支援手動按鈕觸發測試
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   run-script:
     runs-on: ubuntu-latest
     steps:
       - name: 讀取程式碼
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 安裝 Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -25,4 +25,3 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: python main.py
-
