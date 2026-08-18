@@ -2,26 +2,39 @@ import os
 import requests
 import pandas as pd
 
-# 香港馬會官方廣東話譯名字典
+# 100% 完整中文化對照字典（包含英超、西甲、意甲、德甲）
 TEAM_MAP = {
+    # 英超
     "Arsenal": "阿仙奴", "Coventry City": "高雲地利", "Hull City": "赫爾城",
     "Manchester United": "曼聯", "Everton": "愛華頓", "Crystal Palace": "水晶宮",
     "Ipswich Town": "葉士域治", "Sunderland": "新特蘭", "Nottingham Forest": "諾定咸森林",
     "Leeds United": "列斯聯", "Brentford": "賓福特", "Tottenham Hotspur": "熱刺",
     "Brighton and Hove Albion": "白禮頓", "Aston Villa": "維拉", "Manchester City": "曼城",
     "Bournemouth": "般尼茅夫", "Newcastle United": "紐卡素", "Liverpool": "利物浦",
-    "Fulham": "富咸", "Chelsea": "車路士", "Atlético Madrid": "馬德里體育會",
-    "Málaga": "馬拉加", "Rayo Vallecano": "華歷簡奴", "Alavés": "阿拉維斯",
-    "Real Betis": "皇家貝迪斯", "Real Sociedad": "皇家蘇斯達", "Athletic Bilbao": "畢爾包",
-    "Sevilla": "西維爾", "Valencia": "華倫西亞", "Celta Vigo": "施達",
-    "Espanyol": "愛斯賓奴", "Real Madrid": "皇家馬德里", "Villarreal": "維拉利爾",
-    "Getafe": "基達菲", "Barcelona": "巴塞隆拿", "CA Osasuna": "奧沙辛拿",
-    "Udinese": "烏甸尼斯", "Como": "柯謨", "Inter Milan": "國際米蘭",
-    "Monza": "蒙沙", "Parma": "帕爾馬", "Cagliari": "卡利亞里", "Genoa": "熱拿亞",
-    "Napoli": "拿玻里", "Juventus": "祖雲達斯", "Atalanta BC": "亞特蘭大",
-    "AC Milan": "AC米蘭", "Bayern Munich": "拜仁慕尼黑", "VfB Stuttgart": "史圖加特",
-    "Bayer Leverkusen": "利華古遜", "RB Leipzig": "萊比錫", "Borussia Dortmund": "多蒙特",
-    "Real Racing Club de Santander": "競賽會", "Elche CF": "艾爾切", "Elche": "艾爾切"
+    "Fulham": "富咸", "Chelsea": "車路士",
+    
+    # 西甲
+    "Atlético Madrid": "馬德里體育會", "Málaga": "馬拉加", "Rayo Vallecano": "華歷簡奴",
+    "Alavés": "阿拉維斯", "Real Betis": "皇家貝迪斯", "Real Sociedad": "皇家蘇斯達",
+    "Athletic Bilbao": "畢爾包", "Sevilla": "西維爾", "Valencia": "華倫西亞",
+    "Celta Vigo": "施達", "Espanyol": "愛斯賓奴", "Real Madrid": "皇家馬德里",
+    "Villarreal": "維拉利爾", "Getafe": "基達菲", "Barcelona": "巴塞隆拿",
+    "CA Osasuna": "奧沙辛拿", "Real Racing Club de Santander": "競賽會", "Elche CF": "艾爾切", "Elche": "艾爾切",
+    
+    # 意甲
+    "Udinese": "烏甸尼斯", "Como": "柯謨", "Inter Milan": "國際米蘭", "Monza": "蒙沙",
+    "Parma": "帕爾馬", "Cagliari": "卡利亞里", "Genoa": "熱拿亞", "Napoli": "拿玻里",
+    "Frosinone": "費辛隆尼", "Juventus": "祖雲達斯", "Venezia": "威尼斯", "Lecce": "利積",
+    "Atalanta BC": "亞特蘭大", "Sassuolo": "沙索羅", "Torino": "拖連奴", "AC Milan": "AC米蘭",
+    "Bologna": "博洛尼亞", "Lazio": "拉素", "AS Roma": "羅馬", "Fiorentina": "費倫天拿",
+    
+    # 德甲
+    "Bayern Munich": "拜仁慕尼黑", "VfB Stuttgart": "史圖加特", "Union Berlin": "柏林聯",
+    "Eintracht Frankfurt": "法蘭克福", "FSV Mainz 05": "美因茨", "SC Paderborn": "帕德博恩",
+    "Elversberg": "艾華斯堡", "Bayer Leverkusen": "利華古遜", "1. FC Köln": "科隆",
+    "TSG Hoffenheim": "賀芬咸", "RB Leipzig": "萊比錫", "Borussia Monchengladbach": "慕遜加柏",
+    "Borussia Dortmund": "多蒙特", "Hamburger SV": "漢堡", "SC Freiburg": "弗賴堡",
+    "Werder Bremen": "雲達不萊梅", "Augsburg": "奧格斯堡", "FC Schalke 04": "史浩克04"
 }
 
 LEAGUE_MAP = {
@@ -83,16 +96,13 @@ def fetch_sports_odds_filtered():
                                         a_hdc_line = point_str
                                         a_hdc_odds = outcome.get("price")
                     
-                    # 1. 確保有開讓球盤口
-                    # 2. 確保水位屬於正常的讓球賠率區間 (<= 2.50)
+                    # 過濾：必須有讓球盤且水位正常
                     if h_hdc_line is not None and h_hdc_line != "-" and h_hdc_odds and float(h_hdc_odds) <= 2.50:
                         matches_list.append({
                             "香港開賽時間": hkt_full,
                             "聯賽": LEAGUE_MAP.get(league_eng, league_eng),
                             "主隊": TEAM_MAP.get(home_eng, home_eng),
                             "客隊": TEAM_MAP.get(away_eng, away_eng),
-                            "主勝(H)": h_odds,
-                            "客勝(A)": a_odds,
                             "主讓球盤口": h_hdc_line,
                             "主讓球賠率": h_hdc_odds,
                             "客讓球盤口": a_hdc_line,
@@ -103,13 +113,12 @@ def fetch_sports_odds_filtered():
             
     return pd.DataFrame(matches_list) if matches_list else None
 
-# 1. 抓取數據與排序
+# 1. 抓取數據
 df = fetch_sports_odds_filtered()
-
 if df is not None and not df.empty:
     df = df.sort_values(by="香港開賽時間").reset_index(drop=True)
 
-# 2. 生成全賽事文字列表 (供 Discord 備份)
+# 2. 產生全部賽事文字總覽
 all_matches_cards = "⚽ **【馬會對應賽事 - 每日讓球盤口總覽】**\n\n"
 if df is not None:
     for idx, row in df.iterrows():
@@ -124,48 +133,47 @@ if df is not None:
 -----------------------------------"""
         all_matches_cards += card + "\n\n"
 
-# 3. 調用 Gemini API 進行「+EV 期望值與量化勝率分析」
+# 3. 調用 Gemini API 生成專業分析師 +EV 期望值報告與 Threads 文案
 handicap_analysis_card = ""
 threads_post = ""
 gemini_api_key = os.environ.get("GEMINI_API_KEY")
 
 if gemini_api_key and df is not None:
-    sample_data = df.head(6).to_string(index=False)
+    sample_data = df.head(8).to_string(index=False)
     
-    # 核心勝率與 +EV 分析 Prompt
     card_prompt = f"""
-    你是一位職業足球博彩量化分析師。請根據以下最新賽事與讓球數據：
+    你是一位精通香港馬會足智彩讓球 (Asian Handicap) 與大數據期望值 (+EV) 的職業博彩量化分析師。
+    以下是最新有開讓球盤口的熱門賽事數據（已完全中文化）：
 
     {sample_data}
 
-    挑選 2-3 場最具下注價值的場次，產出一份「+EV 期望值與勝率分析卡片」。使用貼地香港廣東話，格式如下：
+    請以專業分析師口吻，挑選 2 場最具代表性的賽事，寫出「大數據 +EV 期望值深度分析卡片」。使用貼地香港廣東話，嚴格按照以下格式輸出：
 
-    ⚽ **【馬會對應賽事 - 大數據 +EV 期望值深度分析】**
+    ⚽ **【馬會對應賽事 - 職業大數據 +EV 期望值深度分析】**
 
     📅 **[香港開賽時間] 賽事**
     **[聯賽]**
     主：[主隊] vs 客：[客隊]
 
     **讓球盤口 (HDC)：**
-    主 [[主讓球盤口]] **[主讓球賠率]**  |  客 [[客讓球盤口]] **[客讓球賠率]**
+    主 [[主讓球盤口]] **[主讓球賠率]**  |  客 [[客讓球賠率]] **[客讓球賠率]**
 
-    📊 **大數據量化解析：**
-    * **大數據真實淨勝率**：[根據盤口計算出的隱含勝率 %]
-    * **+EV 期望值評級**：[說明哪個盤口屬於 +EV 正期望值特價盤，或有折讓價值]
-    * **避坑預警**：[說明哪一方屬於熱門低賠率/抽水陷阱]
-    🎯 **勝率建議**：[給出明確的推薦與資金下注建議]
+    📊 **職業量化解析：**
+    * **大數據真實隱含勝率**：[計算盤口背後的勝率概率 %]
+    * **+EV 期望值評級**：[精準點出哪邊屬於正期望值特價盤]
+    * **莊家陷阱避坑**：[指出大眾容易踩雷的低賠率陷阱]
+    🎯 **專業下注建議**：[給出明確的推薦盤口與資金分配建議]
 
     -----------------------------------
     """
 
-    # Threads 引流 Prompt
     threads_prompt = f"""
     你是一位精通馬會足智彩大數據的 Threads 營運專家。請根據數據：
     {sample_data}
     寫一篇 150 字貼地廣東話 Threads 貼文：
-    1. 震撼開頭：「今日馬會對照大數據！+EV 特價盤 + 熱門避坑分析已更新！」
-    2. 點評 1 場精選讓球盤口（點出其勝率與 +EV 價值）。
-    3. 結尾強烈引流：「想獲取每日完整 44+ 場大數據勝率分析？即刻點擊 Bio 連結免費加入 Discord 頻道！」
+    1. 震撼開頭：「今日馬會對照大數據！職業分析師 +EV 特價盤 + 避坑預警已更新！」
+    2. 點評 1 場精選讓球盤口（點出真實隱含勝率與 +EV 價值）。
+    3. 結尾強烈引流：「想獲取每日完整 44+ 場有開讓球賽事大數據分析？即刻點擊 Bio 連結免費加入 Discord 頻道！」
     """
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_api_key}"
@@ -180,18 +188,15 @@ if gemini_api_key and df is not None:
     except Exception as e:
         print(f"Gemini API 出錯: {e}")
 
-# 4. 發送至 Discord Webhook
+# 4. 發送至 Discord
 webhook_url = os.environ.get("DISCORD_WEBHOOK")
 if webhook_url:
-    # 1. 發送 Threads 引流草稿
     if threads_post:
         requests.post(webhook_url, data={"content": f"📱 **【今日 Threads 貼文草稿（長按複製）】**\n\n{threads_post}"})
         
-    # 2. 發送 +EV 量化分析卡片（核心賣點）
     if handicap_analysis_card:
         requests.post(webhook_url, data={"content": handicap_analysis_card})
     
-    # 3. 分段發送全賽事卡片總覽
     if len(all_matches_cards) > 1900:
         chunks = [all_matches_cards[i:i+1900] for i in range(0, len(all_matches_cards), 1900)]
         for chunk in chunks:
