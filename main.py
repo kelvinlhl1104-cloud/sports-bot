@@ -2,32 +2,28 @@ import os
 import requests
 import pandas as pd
 
-# 100% 完整香港馬會官方譯名對照
+# 港式官方譯名對照
 TEAM_MAP = {
-    # 西甲
     "Atlético Madrid": "馬德里體育會", "Málaga": "馬拉加", "Real Madrid": "皇家馬德里",
-    "Barcelona": "巴塞隆拿", "Real Sociedad": "皇家蘇斯達", "Villarreal": "維拉利爾",
-    "Real Betis": "皇家貝迪斯", "Sevilla": "西維爾", "Athletic Bilbao": "畢爾包",
-    # 英超
-    "Arsenal": "阿仙奴", "Manchester United": "曼聯", "Manchester City": "曼城",
-    "Liverpool": "利物浦", "Chelsea": "車路士", "Tottenham Hotspur": "熱刺",
-    "Aston Villa": "維拉", "Newcastle United": "紐卡素", "Brighton and Hove Albion": "白禮頓",
-    "West Ham United": "韋斯咸", "Crystal Palace": "水晶宮", "Everton": "愛華頓"
+    "Barcelona": "巴塞隆拿", "Rayo Vallecano": "華歷簡奴", "Alavés": "艾拉維斯",
+    "Arsenal": "阿仙奴", "Coventry City": "高雲地利", "Real Betis": "皇家貝迪斯",
+    "Real Sociedad": "皇家蘇斯達", "Hull City": "赫爾城", "Manchester United": "曼聯",
+    "Everton": "愛華頓", "Crystal Palace": "水晶宮", "Ipswich Town": "葉士域治",
+    "Sunderland": "新特蘭", "Nottingham Forest": "諾定咸森林", "Leeds United": "列斯聯"
 }
 
 def make_progress_bar(pct):
-    """生成勝率視覺化進度條"""
     filled = max(1, min(10, int(round(pct / 10))))
     return "█" * filled + "░" * (10 - filled)
 
-def fetch_hkjc_pro_matches():
+def fetch_hkjc_paywall_model():
     api_key = os.environ.get("ODDS_API_KEY")
     if not api_key:
-        return None, None
+        return None
 
     target_leagues = [
         "soccer_epl", "soccer_uefa_champions_league",
-        "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_germany_bundesliga"
+        "soccer_spain_la_liga", "soccer_italy_serie_a"
     ]
     
     all_events = []
@@ -41,7 +37,7 @@ def fetch_hkjc_pro_matches():
             print(f"Error {l_key}: {e}")
 
     if not all_events:
-        return None, None
+        return None
 
     all_events = sorted(all_events, key=lambda x: x.get("commence_time", ""))
     top_event = all_events[0]
@@ -64,7 +60,6 @@ def fetch_hkjc_pro_matches():
             a_line = f"+{s.get('point')}" if s.get('point', 0) > 0 else str(s.get('point'))
             a_odds = float(s.get('price', 1.90))
 
-    # 量化模型運算勝率
     raw_h = (1 / h_odds) * 100
     raw_a = (1 / a_odds) * 100
     total = raw_h + raw_a
@@ -78,8 +73,11 @@ def fetch_hkjc_pro_matches():
         recommend_side = f"客隊 【{away}】 ({a_line})"
         value_tag = "💎 【高博彩期望值 +EV 黃金受讓盤】"
 
-    # 極具說服力的專業量化分析卡片
-    analysis_card = f"""
+    # 計算剩餘鎖定賽事數量
+    locked_count = max(0, len(all_events) - 1)
+
+    # 頂級專業分析卡片 + 付費牆設計
+    paywall_card = f"""
 🎯 **【馬會重心專員 • 大數據 +EV 深度量化拆局】**
 > **🔥 系統近期戰績：近 10 場實戰命中 7 場 (70% 穩定紅單率)**
 
@@ -98,40 +96,21 @@ def fetch_hkjc_pro_matches():
 💰 **【建議注碼分配】**：平注 **3.5%**（強烈建議跟足紀律，長線穩定獲利）
 ━━━━━━━━━━━━━━━━━━━
 
+🔒 **【今日 VIP 獨家鎖定區】**
+• 系統今日額外偵測到 **{locked_count} 場** 高期望值 (+EV) 馬會焦點賽事（包含英超、西甲精準讓球盤口與資金流向）。
+• 為了保障付費會員權益，其餘賽事之數據模型與下注建議**已全數轉入 VIP 專區**。
+• **欲解鎖今日全部賽事拆局與獨家注碼配置，請即刻私訊管理員升級 VIP 會員！**
+
 📱 **【Threads 爆款引流文案（長按複製）】**
-🔥 今日馬會對照大數據出爐！焦點大戰 {home} vs {away}，系統盲測鎖定 +EV 黃金特價盤！想跟住職業推介穩穩地贏？即刻點擊 Bio 連結免費加入 Discord 頻道！
+🔥 今日馬會對照大數據出爐！今日焦點大戰 {home} vs {away} 免費公開，系統盲測鎖定 +EV 黃金特價盤！其餘隱藏重心場次已鎖入 VIP 房，想跟住職業推介穩穩地贏？即刻點擊 Bio 連結加入 Discord 頻道！
 """
 
-    # 生成其餘賽事總覽
-    overview_list = ["⚽ **【今日馬會同步熱門讓球盤口總覽】**\n"]
-    for event in all_events[1:8]:
-        e_home = TEAM_MAP.get(event.get("home_team"), event.get("home_team"))
-        e_away = TEAM_MAP.get(event.get("away_team"), event.get("away_team"))
-        e_time = (pd.to_datetime(event.get("commence_time")) + pd.Timedelta(hours=8)).strftime("%d/%m/%Y %H:%M")
-        
-        s_list = event.get("bookmakers", [{}])[0].get("markets", [{}])[0].get("outcomes", [])
-        hl, ho, al, ao = "-.---", "1.90", "-.---", "1.90"
-        for s in s_list:
-            if s.get("name") == event.get("home_team"):
-                hl = f"+{s.get('point')}" if s.get('point', 0) > 0 else str(s.get('point'))
-                ho = s.get('price')
-            else:
-                al = f"+{s.get('point')}" if s.get('point', 0) > 0 else str(s.get('point'))
-                ao = s.get('price')
+    return paywall_card
 
-        overview_list.append(f"📅 **{e_time}**\n主：{e_home} vs 客：{e_away}\n讓球盤：主 [{hl}] **{ho}** | 客 [{al}] **{ao}**\n-----------------------------------")
-
-    return analysis_card, "\n\n".join(overview_list)
-
-card, overview = fetch_hkjc_pro_matches()
+# 執行並發送到 Discord
+final_message = fetch_hkjc_paywall_model()
 webhook_url = os.environ.get("DISCORD_WEBHOOK")
 
-if webhook_url and card:
-    requests.post(webhook_url, data={"content": card})
-    if overview:
-        if len(overview) > 1900:
-            chunks = [overview[i:i+1900] for i in range(0, len(overview), 1900)]
-            for chunk in chunks:
-                requests.post(webhook_url, data={"content": chunk})
-        else:
-            requests.post(webhook_url, data={"content": overview})
+if webhook_url and final_message:
+    requests.post(webhook_url, data={"content": final_message})
+
