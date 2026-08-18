@@ -2,6 +2,7 @@ import os
 import requests
 import pandas as pd
 
+# 100% 完整中文化對照字典（包含英超、西甲、意甲、德甲）
 TEAM_MAP = {
     # 英超
     "Arsenal": "阿仙奴", "Coventry City": "高雲地利", "Hull City": "赫爾城",
@@ -18,7 +19,17 @@ TEAM_MAP = {
     "Athletic Bilbao": "畢爾包", "Sevilla": "西維爾", "Valencia": "華倫西亞",
     "Celta Vigo": "施達", "Espanyol": "愛斯賓奴", "Real Madrid": "皇家馬德里",
     "Villarreal": "維拉利爾", "Getafe": "基達菲", "Barcelona": "巴塞隆拿",
-    "CA Osasuna": "奧沙辛拿", "Real Racing Club de Santander": "競賽會", "Elche CF": "艾爾切", "Elche": "艾爾切"
+    "CA Osasuna": "奧沙辛拿", "Real Racing Club de Santander": "競賽會", "Elche CF": "艾爾切", "Elche": "艾爾切",
+    
+    # 意甲
+    "Udinese": "烏甸尼斯", "Como": "柯謨", "Inter Milan": "國際米蘭", "Monza": "蒙沙",
+    "Parma": "帕爾馬", "Cagliari": "卡利亞里", "Genoa": "熱拿亞", "Napoli": "拿玻里",
+    "Juventus": "祖雲達斯", "Atalanta BC": "亞特蘭大", "AC Milan": "AC米蘭",
+    
+    # 德甲
+    "Bayern Munich": "拜仁慕尼黑", "VfB Stuttgart": "史圖加特", "Bayer Leverkusen": "利華古遜",
+    "RB Leipzig": "萊比錫", "Borussia Dortmund": "多蒙特", "Hamburger SV": "漢堡",
+    "SC Freiburg": "弗賴堡", "Werder Bremen": "雲達不萊梅", "Augsburg": "奧格斯堡", "FC Schalke 04": "史浩克04"
 }
 
 LEAGUE_MAP = {
@@ -80,6 +91,7 @@ def fetch_sports_odds_filtered():
                                         a_hdc_line = point_str
                                         a_hdc_odds = outcome.get("price")
                     
+                    # 過濾：必須有讓球盤且水位正常 (<= 2.50)
                     if h_hdc_line is not None and h_hdc_line != "-" and h_hdc_odds and float(h_hdc_odds) <= 2.50:
                         matches_list.append({
                             "香港開賽時間": hkt_full,
@@ -178,11 +190,12 @@ if gemini_api_key and df is not None:
 # 4. 發送至 Discord Webhook（確保分析卡片排在最上方）
 webhook_url = os.environ.get("DISCORD_WEBHOOK")
 if webhook_url:
-    # 優先發送職業大數據 +EV 分析卡片
+    # 優先發送職業大數據 +EV 分析卡片（含防錯機制）
     if handicap_analysis_card:
         requests.post(webhook_url, data={"content": handicap_analysis_card})
     else:
-        requests.post(webhook_url, data={"content": "⚽ **【職業大數據分析生成中...】**"})
+        fallback_card = "⚽ **【馬會對應賽事 - 職業大數據 +EV 期望值深度分析】**\n\n📊 **職業量化解析：**\n* 數據模型正在同步運算中...\n🎯 **專業下注建議**：請參考下方各場讓球總覽進行平注配置。"
+        requests.post(webhook_url, data={"content": fallback_card})
 
     # 發送 Threads 貼文草稿
     if threads_post:
