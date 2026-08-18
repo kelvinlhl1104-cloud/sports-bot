@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import pandas as pd
 
@@ -18,6 +19,7 @@ def make_progress_bar(pct):
 def fetch_and_split_data():
     api_key = os.environ.get("ODDS_API_KEY")
     if not api_key:
+        print("❌ 錯誤：找不到 ODDS_API_KEY")
         return None, None
 
     target_leagues = [
@@ -36,11 +38,13 @@ def fetch_and_split_data():
             print(f"Error {l_key}: {e}")
 
     if not all_events:
+        print("⚠️ API 未能抓取到任何賽事數據")
         return None, None
 
+    # 按真實開賽時間由近至遠排序
     all_events = sorted(all_events, key=lambda x: x.get("commence_time", ""))
     
-    # 1. 製作免費群組看的「焦點預覽卡」
+    # 1. 免費大廳預覽卡 (取第 1 場)
     top_event = all_events[0]
     home_eng = top_event.get("home_team", "")
     away_eng = top_event.get("away_team", "")
@@ -91,16 +95,17 @@ def fetch_and_split_data():
 
 🔒 **【今日 VIP 獨家鎖定區】**
 • 系統實時偵測到當前 API 共有 **{real_locked_count} 場** 真實開賽賽事。
-• **欲解鎖今日全部真實賽事拆局與獨家注碼配置,請留意 VIP 頻道！**
+• **欲解鎖今日精選 5 大重心賽事拆局與獨家注碼配置，請留意 VIP 頻道！**
 """
 
-    # 2. 製作 VIP 群組看的「全數真實賽事詳細清單」
+    # 2. VIP 專區卡片 (只抓取最近的 5 場)
+    vip_events = all_events[:5]
     vip_lines = [
-        "🎉 **【VIP 會員專用：今日全數真實賽事與 +EV 深度拆局】**\n"
+        "🎉 **【VIP 會員專用：今日精選最近 5 場 +EV 重心拆局】**\n"
         "━━━━━━━━━━━━━━━━━━━"
     ]
     
-    for idx, event in enumerate(all_events, 1):
+    for idx, event in enumerate(vip_events, 1):
         e_home_eng = event.get("home_team", "")
         e_away_eng = event.get("away_team", "")
         e_home = TEAM_MAP.get(e_home_eng, e_home_eng)
@@ -124,22 +129,24 @@ def fetch_and_split_data():
         except:
             rec = "焦點盤口"
 
-        vip_lines.append(f"**場次 {idx}**：📅 {e_time}\n⚽ **{e_home} vs {e_away}**\n• 讓球盤：主 [{hl}] **{ho}** | 客 [{al}] **{ao}**\n• 🎯 **模型推薦**：{rec}\n-----------------------------------")
+        vip_lines.append(f"**重心 {idx}**：📅 {e_time}\n⚽ **{e_home} vs {e_away}**\n• 讓球盤：主 [{hl}] **{ho}** | 客 [{al}] **{ao}**\n• 🎯 **模型推薦**：{rec}\n-----------------------------------")
 
-    vip_content = "\n".join(vip_lines)
-    return public_card, vip_content
+    vip_card = "\n".join(vip_lines)
+    return public_card, vip_card
 
-# 執行並分流發送
+# 執行與發送
 public_msg, vip_msg = fetch_and_split_data()
 
-# 1. 發送到免費群組 Webhook
+# 1. 發送至免費大廳
 public_webhook = os.environ.get("DISCORD_WEBHOOK")
 if public_webhook and public_msg:
-    requests.post(public_webhook, data={"content": public_msg})
+    res = requests.post(public_webhook, data={"content": public_msg})
+    print(f"免費群組發送狀態：{res.status_code}")
 
-# 2. 發送到 VIP 群組 Webhook
+# 2. 發送至 VIP 專區
 vip_webhook = os.environ.get("DISCORD_VIP_WEBHOOK")
 if vip_webhook and vip_msg:
-    # 如果內容太長，自動切段發送避免超過 Discord 限制
-    for i in range(0, len(vip_msg), 1900):
-        requests.post(vip_webhook, data={"content": vip_msg[i:i+1900]})
+    res = requests.post(vip_webhook, data={"content": vip_msg})
+    print(f"VIP 群組發送狀態：{res.status_code}")
+else:
+    print("⚠️ 找不到 DISCORD_VIP_WEBHOOK 密鑰或內容為空")
