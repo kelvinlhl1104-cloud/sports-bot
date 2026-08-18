@@ -15,7 +15,7 @@ def make_progress_bar(pct):
     filled = max(1, min(10, int(round(pct / 10))))
     return "█" * filled + "░" * (10 - filled)
 
-def fetch_and_generate_all():
+def fetch_and_split_data():
     api_key = os.environ.get("ODDS_API_KEY")
     if not api_key:
         return None, None
@@ -38,10 +38,9 @@ def fetch_and_generate_all():
     if not all_events:
         return None, None
 
-    # 按真實開賽時間排序
     all_events = sorted(all_events, key=lambda x: x.get("commence_time", ""))
     
-    # 1. 產生公開的免費預覽卡片
+    # 1. 製作免費群組看的「焦點預覽卡」
     top_event = all_events[0]
     home_eng = top_event.get("home_team", "")
     away_eng = top_event.get("away_team", "")
@@ -92,13 +91,12 @@ def fetch_and_generate_all():
 
 🔒 **【今日 VIP 獨家鎖定區】**
 • 系統實時偵測到當前 API 共有 **{real_locked_count} 場** 真實開賽賽事。
-• **欲解鎖今日全部真實賽事拆局與獨家注碼配置，請即刻私訊管理員升級 VIP 會員！**
+• **欲解鎖今日全部真實賽事拆局與獨家注碼配置,請留意 VIP 頻道！**
 """
 
-    # 2. 自動生成完整的 VIP 真實賽事清單（全自動化排版）
+    # 2. 製作 VIP 群組看的「全數真實賽事詳細清單」
     vip_lines = [
-        "🎉 **【VIP 會員專用：今日全數真實賽事與 +EV 深度拆局】**",
-        "請將以下由系統自動產出的完整清單發送給付費客人：\n"
+        "🎉 **【VIP 會員專用：今日全數真實賽事與 +EV 深度拆局】**\n"
         "━━━━━━━━━━━━━━━━━━━"
     ]
     
@@ -131,17 +129,17 @@ def fetch_and_generate_all():
     vip_content = "\n".join(vip_lines)
     return public_card, vip_content
 
-# 執行並處理
-public_msg, vip_msg = fetch_and_generate_all()
-webhook_url = os.environ.get("DISCORD_WEBHOOK")
+# 執行並分流發送
+public_msg, vip_msg = fetch_and_split_data()
 
-# 發送公開預覽卡片到 Discord 公開頻道
-if webhook_url and public_msg:
-    requests.post(webhook_url, data={"content": public_msg})
+# 1. 發送到免費群組 Webhook
+public_webhook = os.environ.get("DISCORD_WEBHOOK")
+if public_webhook and public_msg:
+    requests.post(public_webhook, data={"content": public_msg})
 
-# 在 GitHub Actions 的終端日誌（Logs）中印出完整的 VIP 清單，方便隨時複製
-if vip_msg:
-    print("\n" + "="*40)
-    print(vip_msg)
-    print("="*40 + "\n")
-
+# 2. 發送到 VIP 群組 Webhook
+vip_webhook = os.environ.get("DISCORD_VIP_WEBHOOK")
+if vip_webhook and vip_msg:
+    # 如果內容太長，自動切段發送避免超過 Discord 限制
+    for i in range(0, len(vip_msg), 1900):
+        requests.post(vip_webhook, data={"content": vip_msg[i:i+1900]})
