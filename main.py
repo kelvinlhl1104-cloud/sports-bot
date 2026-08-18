@@ -2,7 +2,6 @@ import os
 import requests
 import pandas as pd
 
-# 100% 完整中文化對照字典（包含英超、西甲、意甲、德甲）
 TEAM_MAP = {
     # 英超
     "Arsenal": "阿仙奴", "Coventry City": "高雲地利", "Hull City": "赫爾城",
@@ -19,22 +18,7 @@ TEAM_MAP = {
     "Athletic Bilbao": "畢爾包", "Sevilla": "西維爾", "Valencia": "華倫西亞",
     "Celta Vigo": "施達", "Espanyol": "愛斯賓奴", "Real Madrid": "皇家馬德里",
     "Villarreal": "維拉利爾", "Getafe": "基達菲", "Barcelona": "巴塞隆拿",
-    "CA Osasuna": "奧沙辛拿", "Real Racing Club de Santander": "競賽會", "Elche CF": "艾爾切", "Elche": "艾爾切",
-    
-    # 意甲
-    "Udinese": "烏甸尼斯", "Como": "柯謨", "Inter Milan": "國際米蘭", "Monza": "蒙沙",
-    "Parma": "帕爾馬", "Cagliari": "卡利亞里", "Genoa": "熱拿亞", "Napoli": "拿玻里",
-    "Frosinone": "費辛隆尼", "Juventus": "祖雲達斯", "Venezia": "威尼斯", "Lecce": "利積",
-    "Atalanta BC": "亞特蘭大", "Sassuolo": "沙索羅", "Torino": "拖連奴", "AC Milan": "AC米蘭",
-    "Bologna": "博洛尼亞", "Lazio": "拉素", "AS Roma": "羅馬", "Fiorentina": "費倫天拿",
-    
-    # 德甲
-    "Bayern Munich": "拜仁慕尼黑", "VfB Stuttgart": "史圖加特", "Union Berlin": "柏林聯",
-    "Eintracht Frankfurt": "法蘭克福", "FSV Mainz 05": "美因茨", "SC Paderborn": "帕德博恩",
-    "Elversberg": "艾華斯堡", "Bayer Leverkusen": "利華古遜", "1. FC Köln": "科隆",
-    "TSG Hoffenheim": "賀芬咸", "RB Leipzig": "萊比錫", "Borussia Monchengladbach": "慕遜加柏",
-    "Borussia Dortmund": "多蒙特", "Hamburger SV": "漢堡", "SC Freiburg": "弗賴堡",
-    "Werder Bremen": "雲達不萊梅", "Augsburg": "奧格斯堡", "FC Schalke 04": "史浩克04"
+    "CA Osasuna": "奧沙辛拿", "Real Racing Club de Santander": "競賽會", "Elche CF": "艾爾切", "Elche": "艾爾切"
 }
 
 LEAGUE_MAP = {
@@ -96,13 +80,14 @@ def fetch_sports_odds_filtered():
                                         a_hdc_line = point_str
                                         a_hdc_odds = outcome.get("price")
                     
-                    # 過濾：必須有讓球盤且水位正常
                     if h_hdc_line is not None and h_hdc_line != "-" and h_hdc_odds and float(h_hdc_odds) <= 2.50:
                         matches_list.append({
                             "香港開賽時間": hkt_full,
                             "聯賽": LEAGUE_MAP.get(league_eng, league_eng),
                             "主隊": TEAM_MAP.get(home_eng, home_eng),
                             "客隊": TEAM_MAP.get(away_eng, away_eng),
+                            "主勝(H)": h_odds,
+                            "客勝(A)": a_odds,
                             "主讓球盤口": h_hdc_line,
                             "主讓球賠率": h_hdc_odds,
                             "客讓球盤口": a_hdc_line,
@@ -118,7 +103,7 @@ df = fetch_sports_odds_filtered()
 if df is not None and not df.empty:
     df = df.sort_values(by="香港開賽時間").reset_index(drop=True)
 
-# 2. 產生全部賽事文字總覽
+# 2. 生成全部賽事文字總覽
 all_matches_cards = "⚽ **【馬會對應賽事 - 每日讓球盤口總覽】**\n\n"
 if df is not None:
     for idx, row in df.iterrows():
@@ -133,7 +118,7 @@ if df is not None:
 -----------------------------------"""
         all_matches_cards += card + "\n\n"
 
-# 3. 調用 Gemini API 生成專業分析師 +EV 期望值報告與 Threads 文案
+# 3. 調用 Gemini API 生成專業分析師卡片與 Threads 貼文
 handicap_analysis_card = ""
 threads_post = ""
 gemini_api_key = os.environ.get("GEMINI_API_KEY")
@@ -143,7 +128,7 @@ if gemini_api_key and df is not None:
     
     card_prompt = f"""
     你是一位精通香港馬會足智彩讓球 (Asian Handicap) 與大數據期望值 (+EV) 的職業博彩量化分析師。
-    以下是最新有開讓球盤口的熱門賽事數據（已完全中文化）：
+    以下是最新有開讓球盤口的熱門賽事數據：
 
     {sample_data}
 
@@ -156,7 +141,7 @@ if gemini_api_key and df is not None:
     主：[主隊] vs 客：[客隊]
 
     **讓球盤口 (HDC)：**
-    主 [[主讓球盤口]] **[主讓球賠率]**  |  客 [[客讓球賠率]] **[客讓球賠率]**
+    主 [[主讓球盤口]] **[主讓球賠率]**  |  客 [[客讓球盤口]] **[客讓球賠率]**
 
     📊 **職業量化解析：**
     * **大數據真實隱含勝率**：[計算盤口背後的勝率概率 %]
@@ -173,30 +158,37 @@ if gemini_api_key and df is not None:
     寫一篇 150 字貼地廣東話 Threads 貼文：
     1. 震撼開頭：「今日馬會對照大數據！職業分析師 +EV 特價盤 + 避坑預警已更新！」
     2. 點評 1 場精選讓球盤口（點出真實隱含勝率與 +EV 價值）。
-    3. 結尾強烈引流：「想獲取每日完整 44+ 場有開讓球賽事大數據分析？即刻點擊 Bio 連結免費加入 Discord 頻道！」
+    3. 結尾強烈引流：「想獲取每日完整有開讓球賽事大數據？即刻點擊 Bio 連結免費加入 Discord 頻道！」
     """
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_api_key}"
+    headers = {"Content-Type": "application/json"}
+    
     try:
-        res1 = requests.post(url, json={"contents": [{"parts": [{"text": card_prompt}]}]}, timeout=15)
+        res1 = requests.post(url, headers=headers, json={"contents": [{"parts": [{"text": card_prompt}]}]}, timeout=20)
         if res1.status_code == 200:
             handicap_analysis_card = res1.json()["candidates"][0]["content"]["parts"][0]["text"]
 
-        res2 = requests.post(url, json={"contents": [{"parts": [{"text": threads_prompt}]}]}, timeout=15)
+        res2 = requests.post(url, headers=headers, json={"contents": [{"parts": [{"text": threads_prompt}]}]}, timeout=20)
         if res2.status_code == 200:
             threads_post = res2.json()["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        print(f"Gemini API 出錯: {e}")
+        print(f"Gemini API 請求出錯: {e}")
 
-# 4. 發送至 Discord
+# 4. 發送至 Discord Webhook（確保分析卡片排在最上方）
 webhook_url = os.environ.get("DISCORD_WEBHOOK")
 if webhook_url:
+    # 優先發送職業大數據 +EV 分析卡片
+    if handicap_analysis_card:
+        requests.post(webhook_url, data={"content": handicap_analysis_card})
+    else:
+        requests.post(webhook_url, data={"content": "⚽ **【職業大數據分析生成中...】**"})
+
+    # 發送 Threads 貼文草稿
     if threads_post:
         requests.post(webhook_url, data={"content": f"📱 **【今日 Threads 貼文草稿（長按複製）】**\n\n{threads_post}"})
         
-    if handicap_analysis_card:
-        requests.post(webhook_url, data={"content": handicap_analysis_card})
-    
+    # 發送全賽事讓球盤口總覽
     if len(all_matches_cards) > 1900:
         chunks = [all_matches_cards[i:i+1900] for i in range(0, len(all_matches_cards), 1900)]
         for chunk in chunks:
